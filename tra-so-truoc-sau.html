@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tra số trước sau</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: một cột hẹp, ô nhập ở trên, kết quả hai bảng ngay dưới, bảng gốc để đối chiếu */
+:root {
+  --bg: #eef1f5;
+  --surface: #ffffff;
+  --fg: #1b2330;
+  --muted: #5b6677;
+  --line: #d5dbe4;
+  --cell: #cfd5de;
+  --cell-fg: #1b2330;
+  --hl: #e6b673;
+  --hl-fg: #2a1d08;
+  --accent: #1f5fbf;
+  --accent-soft: #dbe7fa;
+  --accent-fg: #ffffff;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --surface: #1a2029; --fg: #e7ebf1; --muted: #98a3b3; --line: #2d3644;
+    --cell: #2b3441; --cell-fg: #e7ebf1; --hl: #b9833a; --hl-fg: #fff6e8;
+    --accent: #6aa4ff; --accent-soft: #1f3354; --accent-fg: #0d1420;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #1a2029; --fg: #e7ebf1; --muted: #98a3b3; --line: #2d3644;
+  --cell: #2b3441; --cell-fg: #e7ebf1; --hl: #b9833a; --hl-fg: #fff6e8;
+  --accent: #6aa4ff; --accent-soft: #1f3354; --accent-fg: #0d1420;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0 0 4px; font-weight: 700; text-wrap: balance; }
+h2 { font-size: 13px; margin: 0; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.lede { margin: 0; color: var(--muted); max-width: 60ch; }
+
+.finder {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 16px; display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: flex-end;
+}
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; font-weight: 600; color: var(--muted); }
+#q {
+  width: 140px; font: 700 28px/1 var(--font-num); padding: 10px 12px; text-align: center;
+  background: var(--bg); color: var(--fg); border: 2px solid var(--line); border-radius: 8px;
+}
+#q:focus-visible, .chk input:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 2px;
+}
+.chk { display: flex; align-items: center; gap: 8px; font-size: 14px; padding-bottom: 6px; }
+.chk input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+.results { display: flex; flex-direction: column; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.match { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.slot { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.slot .tag { font-size: 12px; color: var(--muted); font-weight: 500; }
+.slot .val {
+  font: 700 22px/1.25 var(--font-num); font-variant-numeric: tabular-nums;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 8px; text-align: center; min-height: 48px; overflow-wrap: anywhere;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.slot.mid .val { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.slot .val.none { font: 500 14px/1.3 var(--font-body); color: var(--muted); }
+.slot .sub { font-size: 12px; color: var(--muted); }
+.note { margin: 0; color: var(--muted); }
+
+.tbl { display: flex; flex-direction: column; gap: 8px; }
+.scroll { overflow-x: auto; padding-bottom: 4px; }
+.row { display: flex; gap: 4px; min-width: 520px; }
+.cell {
+  flex: 1 1 0; min-width: 72px; min-height: 52px; background: var(--cell); color: var(--cell-fg);
+  border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font: 500 15px/1.35 var(--font-num); font-variant-numeric: tabular-nums; padding: 6px 4px;
+  outline: 2px solid transparent; outline-offset: -2px;
+}
+.cell.hl { background: var(--hl); color: var(--hl-fg); }
+.cell.near { outline: 2px dashed var(--accent); }
+.cell.found { outline: 3px solid var(--accent); background: var(--accent-soft); color: var(--fg); font-weight: 700; }
+.cell.found.hl { background: var(--hl); color: var(--hl-fg); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.legend .l-found::before { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--accent-soft); }
+.legend .l-near::before { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.legend .l-hl::before { background: var(--hl); }
+
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+summary { cursor: pointer; font-weight: 600; }
+.edit { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.edit label { font-size: 13px; font-weight: 600; color: var(--muted); }
+textarea {
+  width: 100%; min-height: 64px; resize: vertical; font: 500 14px/1.5 var(--font-num);
+  background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+}
+.hint { margin: 0; font-size: 13px; color: var(--muted); max-width: 64ch; }
+button {
+  align-self: flex-start; font: 600 14px var(--font-body); padding: 8px 14px; border-radius: 8px;
+  background: var(--bg); color: var(--fg); border: 1px solid var(--line); cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+@media (max-width: 480px) {
+  h1 { font-size: 22px; }
+  .slot .val { font-size: 18px; padding: 8px 4px; }
+  #q { width: 120px; }
+}
+</style>
+
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>Tra số trước và sau</h1>
+    <p class="lede">Nhập một số, trang tìm số đứng trước và số đứng sau nó trong cả hai bảng. Có thể nhập số chính (17) hoặc số trong ngoặc (23).</p>
+  </header>
+
+  <section class="finder" aria-label="Nhập số cần tra">
+    <div class="field">
+      <label for="q">Số cần tra</label>
+      <input id="q" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="17" placeholder="17">
+    </div>
+    <label class="chk"><input type="checkbox" id="wrap"> Nối vòng đầu với cuối</label>
+  </section>
+
+  <section id="results" class="results" aria-live="polite"></section>
+
+  <section class="tbl" aria-label="Bảng 1">
+    <h2>Bảng 1</h2>
+    <div class="scroll"><div class="row" id="t1"></div></div>
+  </section>
+  <section class="tbl" aria-label="Bảng 2">
+    <h2>Bảng 2</h2>
+    <div class="scroll"><div class="row" id="t2"></div></div>
+    <div class="legend">
+      <span class="l-found">Số vừa tra</span>
+      <span class="l-near">Số trước và sau</span>
+      <span class="l-hl">Ô màu cam trong bảng gốc</span>
+    </div>
+  </section>
+
+  <details>
+    <summary>Chỉnh sửa dữ liệu hai bảng</summary>
+    <div class="edit">
+      <p class="hint">Mỗi ô cách nhau bằng dấu phẩy. Ô có hai số xếp chồng thì ngăn bằng dấu gạch chéo, ví dụ 47(50)/53(56). Thêm dấu * sau ô để tô màu cam.</p>
+      <div>
+        <label for="d1">Dữ liệu Bảng 1</label>
+        <textarea id="d1" spellcheck="false"></textarea>
+      </div>
+      <div>
+        <label for="d2">Dữ liệu Bảng 2</label>
+        <textarea id="d2" spellcheck="false"></textarea>
+      </div>
+      <button type="button" id="reset">Khôi phục dữ liệu ban đầu</button>
+    </div>
+  </details>
+</main>
+
+<script>
+(function () {
+  var DEFAULTS = {
+    d1: "00, 11(14)*, 41(44), 03(07), 17(23), 29(35)",
+    d2: "03(07), 59, 17(23), 11(14)*, 47(50)/53(56), 29(35)"
+  };
+  var KEY = "tra-so-trước-sau-v1";
+  var $ = function (id) { return document.getElementById(id); };
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var o = JSON.parse(raw);
+        if (o && typeof o.d1 === "string" && typeof o.d2 === "string") return o;
+      }
+    } catch (e) {}
+    return { d1: DEFAULTS.d1, d2: DEFAULTS.d2 };
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify({ d1: $("d1").value, d2: $("d2").value })); } catch (e) {}
+  }
+
+  function parse(text) {
+    return text.split(",").map(function (c) { return c.trim(); }).filter(Boolean).map(function (c) {
+      var hl = /\*$/.test(c);
+      c = c.replace(/\*$/, "");
+      var entries = c.split("/").map(function (e) { return e.trim(); }).filter(Boolean).map(function (e) {
+        var m = e.match(/^(\d+)\s*(?:\(\s*(\d+)\s*\))?$/);
+        return m ? { main: m[1], alt: m[2] || null, label: e } : { main: e, alt: null, label: e };
+      });
+      return { hl: hl, entries: entries };
+    }).filter(function (c) { return c.entries.length; });
+  }
+
+  function norm(v) {
+    var d = String(v).replace(/\D/g, "");
+    if (d.length === 1) d = "0" + d;
+    return d;
+  }
+  function pad(v) { return v ? norm(v) : v; }
+
+  function find(cells, q) {
+    var out = [];
+    cells.forEach(function (cell, i) {
+      cell.entries.forEach(function (e) {
+        if (pad(e.main) === q) out.push({ index: i, entry: e, via: "main" });
+        else if (e.alt && pad(e.alt) === q) out.push({ index: i, entry: e, via: "alt" });
+      });
+    });
+    return out;
+  }
+
+  function neighbor(cells, i, dir, wrap) {
+    var n = cells.length, j = i + dir;
+    if (wrap) return cells[(j + n) % n];
+    return j >= 0 && j < n ? cells[j] : null;
+  }
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function cellLabel(cell) { return cell.entries.map(function (e) { return e.label; }); }
+
+  function slot(tag, cell, mid, sub) {
+    var s = el("div", "slot" + (mid ? " mid" : ""));
+    s.appendChild(el("div", "tag", tag));
+    var v = el("div", "val" + (cell ? "" : " none"));
+    if (cell) cellLabel(cell).forEach(function (l) { v.appendChild(el("div", null, l)); });
+    else v.textContent = "Không có";
+    s.appendChild(v);
+    if (sub) s.appendChild(el("div", "sub", sub));
+    return s;
+  }
+
+  function renderTable(rowEl, cells, matches, wrap) {
+    rowEl.textContent = "";
+    var found = {}, near = {};
+    matches.forEach(function (m) {
+      found[m.index] = true;
+      var n = cells.length;
+      if (wrap) { near[(m.index - 1 + n) % n] = true; near[(m.index + 1) % n] = true; }
+      else { near[m.index - 1] = true; near[m.index + 1] = true; }
+    });
+    cells.forEach(function (cell, i) {
+      var cls = "cell" + (cell.hl ? " hl" : "");
+      if (found[i]) cls += " found"; else if (near[i]) cls += " near";
+      var d = el("div", cls);
+      cellLabel(cell).forEach(function (l) { d.appendChild(el("div", null, l)); });
+      rowEl.appendChild(d);
+    });
+  }
+
+  function render() {
+    var q = norm($("q").value);
+    var wrap = $("wrap").checked;
+    var tables = [
+      { name: "Bảng 1", cells: parse($("d1").value), row: $("t1") },
+      { name: "Bảng 2", cells: parse($("d2").value), row: $("t2") }
+    ];
+    var box = $("results");
+    box.textContent = "";
+
+    tables.forEach(function (t) {
+      var matches = q ? find(t.cells, q) : [];
+      renderTable(t.row, t.cells, matches, wrap);
+
+      var card = el("div", "card");
+      card.appendChild(el("h2", null, t.name));
+      if (!q) {
+        card.appendChild(el("p", "note", "Nhập một số ở ô phía trên để xem kết quả."));
+      } else if (!matches.length) {
+        card.appendChild(el("p", "note", "Số " + q + " không có trong " + t.name.toLowerCase() + "."));
+      } else {
+        matches.forEach(function (m) {
+          var cell = t.cells[m.index];
+          var row = el("div", "match");
+          row.appendChild(slot("Đứng trước", neighbor(t.cells, m.index, -1, wrap), false));
+          row.appendChild(slot("Số đã nhập", cell, true, m.via === "alt" ? "Khớp số trong ngoặc" : ""));
+          row.appendChild(slot("Đứng sau", neighbor(t.cells, m.index, 1, wrap), false));
+          card.appendChild(row);
+        });
+      }
+      box.appendChild(card);
+    });
+  }
+
+  var saved = load();
+  $("d1").value = saved.d1;
+  $("d2").value = saved.d2;
+
+  $("q").addEventListener("input", render);
+  $("wrap").addEventListener("change", render);
+  ["d1", "d2"].forEach(function (id) {
+    $(id).addEventListener("input", function () { save(); render(); });
+  });
+  $("reset").addEventListener("click", function () {
+    $("d1").value = DEFAULTS.d1;
+    $("d2").value = DEFAULTS.d2;
+    save(); render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
